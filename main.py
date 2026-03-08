@@ -2,59 +2,16 @@ import requests
 from pprint import pprint
 from bs4 import BeautifulSoup
 import re
-
-url_without_most_replayed = "https://www.youtube.com/watch?v=XC8SlKJj4Zs"
-url_with_most_replayed = "https://www.youtube.com/watch?v=9Oo1k_lNwlc"
-
-resp = requests.get(url_with_most_replayed)
-resp.raise_for_status()
-soup = BeautifulSoup(resp.text, "html.parser")
-scripts = soup.find_all("script")
-script = scripts[1]
-# pprint(len(scripts))
-
-# for var in vars(script):
-#     print(var)
-
-# print(f"\nparser_class: {script.parser_class}\n")
-# print(f"name: {script.name}\n")
-# print(script.namespace)
-# print(script._namespaces)
-# print(script.prefix)
-# print(script.sourceline)
-# print(script.sourcepos)
-# print(f"attribute_value_list_class: {script.attribute_value_list_class}\n")
-# print(f"attrs: {script.attrs}\n")
-# print(f"known_xml: {script.known_xml}\n")
-# print(f"contents:")
-# print(script.contents)
-# print(type(script.contents))   # list
-# print(type(script.contents[0]))   # <class 'bs4.element.Script'>
-# print(script.contents[0])
-# print(type(script.contents[0]))
-# pprint(vars(script.contents[0]))
-
-# print(f"cdata_list_attributes: {script.cdata_list_attributes}\n")
-# print(type(script.string))
-for string in script.strings:
-    print(type(repr(string)))
-
-
-# for script in scripts:
-#     print(script.nonce)
-
-pattern = r"var ytInitialData "
-for i, script in enumerate(scripts):
-    for string in script.strings:
-        if re.findall(pattern, repr(string)):
-            print(f"Found in script {i}")
-
-# print(scripts[47])
-
-
-import re
 import json
-from bs4 import BeautifulSoup
+import sys
+
+
+HEADERS = {
+    # YouTube serves different variants depending on headers; a desktop UA helps.
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+}
+
 
 def extract_js_object_from_var(script_text: str, var_name: str) -> str | None:
     """
@@ -159,58 +116,99 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
     return None
 
 
-import requests
-from bs4 import BeautifulSoup
+def get_start_end_millis(url: str) -> list[tuple[int]] | None:
+    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
+    if not re.match(pattern, url):
+        print("Invalid YouTube URL.")
+        sys.exit(1)
+    
+    resp = requests.get(url, headers=HEADERS)
+    resp.raise_for_status()
+    html = resp.text
+    soup = BeautifulSoup(html, "html.parser")
+    data = extract_yt_initial_data(soup)
 
-url = url_without_most_replayed
-headers = {
-    # YouTube serves different variants depending on headers; a desktop UA helps.
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-}
-html = requests.get(url, headers=headers, timeout=20).text
-soup = BeautifulSoup(html, "html.parser")
+    if data is None:
+        raise RuntimeError("ytInitialData could not be found or could not be parsed.")
+    
+    if "frameworkUpdates" not in data:
+        return None
+    framework_updates = data["frameworkUpdates"]
 
-data = extract_yt_initial_data(soup)
-if data is None:
-    print("ytInitialData not found or could not be parsed.")
-else:
-    # Now `data` is a Python dict; do whatever you like with it:
-    print(type(data), len(data))
-    # Example: print available keys at the top level
-    print(list(data.keys()))
+    if "entityBatchUpdate" not in framework_updates:
+        return None
+    entity_batch_updates = framework_updates["entityBatchUpdate"]
 
-framework_updates = data["frameworkUpdates"]
-print(framework_updates.keys())
-entity_batch_update = framework_updates["entityBatchUpdate"]
-print(entity_batch_update.keys())
-mutations = entity_batch_update["mutations"]
-for mutation in mutations:
-    if mutation["type"] == "ENTITY_MUTATION_TYPE_REPLACE":
+    if "mutations" not in entity_batch_updates:
+        return None
+    mutations = entity_batch_updates["mutations"]
+
+    pairs = []
+    for mutation in mutations:
+        if "type" not in mutation:
+            raise RuntimeError("type not found in mutation.")
+        if mutation["type"] != "ENTITY_MUTATION_TYPE_REPLACE":
+            continue
+
+        if "payload" not in mutation:
+            raise RuntimeError("payload not found in mutation.")
         payload = mutation["payload"]
-        if "macroMarkersListEntity" in payload:
-            macro_markers_list_entity = payload["macroMarkersListEntity"]
-            markers_list = macro_markers_list_entity["markersList"]
-            print(markers_list.keys())
-            if "markersDecoration" in markers_list:
-                markers_decoration = markers_list["markersDecoration"]
-                # pprint(markers_decoration)
-                print(markers_decoration.keys())
-                if "timedMarkerDecorations" in markers_decoration:
-                    timed_marker_decorations = markers_decoration["timedMarkerDecorations"]
-                    pprint(timed_marker_decorations)
-                    for timed_marker_decoration in timed_marker_decorations:
-                        print(timed_marker_decoration)
-                        if "label" in timed_marker_decoration:
-                            label = timed_marker_decoration["label"]
-                            print(label.keys())
-                            if "runs" in label:
-                                runs = label["runs"]
-                                print(runs)
-                                for run in runs:
-                                    print(run)
-                                    if "text" in run:
-                                        text = run["text"]
-                                        print(text)
-                                        if text == "Most replayed":
-                                            print("Video has 'Most replayed' section")
+
+        if "macroMarkersListEntity" not in payload:
+            continue
+        macro_markers_list_entity = payload["macroMarkersListEntity"]
+
+        if "markersList" not in macro_markers_list_entity:
+            raise RuntimeError("markersList not found in macroMarkersListEntity.")
+        markers_list = macro_markers_list_entity["markersList"]
+
+        if "markersDecoration" not in markers_list:
+            raise RuntimeError("markersDecoration not found in markersList.")
+        markers_decoration = markers_list["markersDecoration"]
+
+        if "timedMarkerDecorations" not in markers_decoration:
+            raise RuntimeError("timedMarkerDecorations not found in markersDecoration.")
+        timed_marker_decorations = markers_decoration["timedMarkerDecorations"]
+
+        for decoration in timed_marker_decorations:
+            if "label" not in decoration:
+                raise RuntimeError("label not found in decoration.")
+            label = decoration["label"]
+
+            if "runs" not in label:
+                raise RuntimeError("runs not found in label.")
+            runs = label["runs"]
+
+            for run in runs:
+                if "text" not in run:
+                    raise RuntimeError("text not found in run.")
+                text = run["text"]
+
+                if text != "Most replayed":
+                    raise RuntimeError("text is not 'Most replayed'.")
+                
+                pair = (decoration["visibleTimeRangeStartMillis"], decoration["visibleTimeRangeEndMillis"])
+                pairs.append(pair)
+    
+    if len(pairs) == 0:
+        return None
+    return pairs
+
+
+def main():
+    url_without_most_replayed = "https://www.youtube.com/watch?v=XC8SlKJj4Zs"
+    url_with_most_replayed = "https://www.youtube.com/watch?v=9Oo1k_lNwlc"
+    url_with_multiple_most_replayed = "https://www.youtube.com/watch?v=QKyaevfCUVY"
+    url_invalid = "abc.com"
+
+    pairs = get_start_end_millis(url_without_most_replayed)
+    print(pairs)
+    pairs = get_start_end_millis(url_with_most_replayed)
+    print(pairs)
+    pairs = get_start_end_millis(url_with_multiple_most_replayed)
+    print(pairs)
+    get_start_end_millis(url_invalid)
+
+
+if __name__ == "__main__":
+    main()
