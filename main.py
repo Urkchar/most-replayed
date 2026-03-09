@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 import json
 import sys
+import os
 
 from yt_dlp import YoutubeDL
 
@@ -204,36 +205,38 @@ def get_time_ranges(url: str) -> list[tuple[int]] | None:
 
 
 def main():
-    url_without_most_replayed = "https://www.youtube.com/watch?v=XC8SlKJj4Zs"
-    url_with_most_replayed = "https://www.youtube.com/watch?v=9Oo1k_lNwlc"
-    url_with_multiple_most_replayed = "https://www.youtube.com/watch?v=QKyaevfCUVY"
-    url_invalid = "abc.com"
+    if len(sys.argv) <= 1:
+        print("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        sys.exit(1)
 
-    urls = [
-        url_without_most_replayed,
-        url_with_most_replayed,
-        url_with_multiple_most_replayed,
-        # url_invalid
-    ]
+    url = sys.argv[1]
+
+    # urls = [
+    #     # url_without_most_replayed,
+    #     url_with_most_replayed,
+    #     # url_with_multiple_most_replayed,
+    #     # url_invalid
+    # ]
 
 
     def ranges(info_dict, ydl):
         webpage_url = info_dict["webpage_url"]
         return get_time_ranges(webpage_url)
 
-
+    paths = {
+        "home": f"{os.getcwd()}\Clips"
+    }
     ytdl_opts = {
         "download_ranges": ranges,
         "outtmpl": "%(title)s %(autonumber)s.%(ext)s",
         "fixup": "warn",
-        "force_keyframes_at_cuts": True
+        "force_keyframes_at_cuts": True,
+        "quiet": True,
+        "paths": paths
     }
 
     ytdl = YoutubeDL(ytdl_opts)
-    # print(ytdl.params)
-    ytdl.download(urls)
-
-    
+    ytdl.download(url)
 
 
 if __name__ == "__main__":
