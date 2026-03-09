@@ -1,2 +1,6 @@
 requests
 bs4
+
+yt-dlp
+yt-dlp-ejs
+deno

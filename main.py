@@ -5,6 +5,8 @@ import re
 import json
 import sys
 
+from yt_dlp import YoutubeDL
+
 
 HEADERS = {
     # YouTube serves different variants depending on headers; a desktop UA helps.
@@ -116,7 +118,7 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
     return None
 
 
-def get_start_end_millis(url: str) -> list[tuple[int]] | None:
+def get_time_ranges(url: str) -> list[tuple[int]] | None:
     pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
     if not re.match(pattern, url):
         print("Invalid YouTube URL.")
@@ -187,11 +189,17 @@ def get_start_end_millis(url: str) -> list[tuple[int]] | None:
                 if text != "Most replayed":
                     raise RuntimeError("text is not 'Most replayed'.")
                 
-                pair = (decoration["visibleTimeRangeStartMillis"], decoration["visibleTimeRangeEndMillis"])
+                # pair = (decoration["visibleTimeRangeStartMillis"], decoration["visibleTimeRangeEndMillis"])
+                start_time_seconds = decoration["visibleTimeRangeStartMillis"] / 1000
+                end_time_seconds = decoration["visibleTimeRangeEndMillis"] / 1000
+                pair = {
+                    "start_time": start_time_seconds,
+                    "end_time": end_time_seconds
+                }
                 pairs.append(pair)
     
-    if len(pairs) == 0:
-        return None
+    # if len(pairs) == 0:
+    #     return None
     return pairs
 
 
@@ -201,13 +209,31 @@ def main():
     url_with_multiple_most_replayed = "https://www.youtube.com/watch?v=QKyaevfCUVY"
     url_invalid = "abc.com"
 
-    pairs = get_start_end_millis(url_without_most_replayed)
-    print(pairs)
-    pairs = get_start_end_millis(url_with_most_replayed)
-    print(pairs)
-    pairs = get_start_end_millis(url_with_multiple_most_replayed)
-    print(pairs)
-    get_start_end_millis(url_invalid)
+    urls = [
+        url_without_most_replayed,
+        url_with_most_replayed,
+        url_with_multiple_most_replayed,
+        # url_invalid
+    ]
+
+
+    def ranges(info_dict, ydl):
+        webpage_url = info_dict["webpage_url"]
+        return get_time_ranges(webpage_url)
+
+
+    ytdl_opts = {
+        "download_ranges": ranges,
+        "outtmpl": "%(title)s %(autonumber)s.%(ext)s",
+        "fixup": "warn",
+        "force_keyframes_at_cuts": True
+    }
+
+    ytdl = YoutubeDL(ytdl_opts)
+    # print(ytdl.params)
+    ytdl.download(urls)
+
+    
 
 
 if __name__ == "__main__":
