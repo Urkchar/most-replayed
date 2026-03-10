@@ -121,22 +121,20 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
     return None
 
 
-def get_time_ranges(url: str) -> list[tuple[float]]:
+def fetch_html(url: str) -> str | None:
+    """Fetch HTML content from the URL with error handling."""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         resp.raise_for_status()
+        return resp.text
     except requests.RequestException as e:
-        logging.error(f"Falied to fetch URL: {e}")
+        logging.error(f"Failed to fetch HTML: {e}")
+        return None
+    
 
-    html = resp.text
-    soup = BeautifulSoup(html, "html.parser")
-
-    data = extract_yt_initial_data(soup)
+def parse_yt_initial_data(data: dict) -> list[dict]:
+    """Extract time ranges from ytInitialData."""
     time_ranges = []
-    if not data:
-        logging.warning("ytInitialData not found.")
-        return time_ranges
-
     try:
         framework_updates = data["frameworkUpdates"]
         entity_batch_updates = framework_updates["entityBatchUpdate"]
@@ -175,11 +173,27 @@ def get_time_ranges(url: str) -> list[tuple[float]]:
     return time_ranges
 
 
+def get_time_ranges(url: str) -> list[tuple[float]]:
+    time_ranges = []
+
+    html = fetch_html(url)
+    if not html:
+        logging.error("Failed to fetch URL.")
+        return time_ranges
+    soup = BeautifulSoup(html, "html.parser")
+    data = extract_yt_initial_data(soup)
+    if not data:
+        logging.warning("ytInitialData not found.")
+        return time_ranges
+    
+    return parse_yt_initial_data(data)
+
+
 def main():
     if len(sys.argv) <= 1:
         logging.error("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
-        
+
     url = sys.argv[1]
     pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
     if not re.match(pattern, url):
