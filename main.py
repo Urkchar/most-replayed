@@ -139,8 +139,8 @@ def parse_yt_initial_data(data: dict) -> list[dict]:
     time_ranges = []
     try:
         framework_updates = data["frameworkUpdates"]
-        entity_batch_updates = framework_updates["entityBatchUpdate"]
-        mutations = entity_batch_updates["mutations"]
+        entity_batch_update = framework_updates["entityBatchUpdate"]
+        mutations = entity_batch_update["mutations"]
 
         for mutation in mutations:
             if mutation["type"] != "ENTITY_MUTATION_TYPE_REPLACE":
@@ -192,8 +192,9 @@ def get_time_ranges(url: str) -> list[tuple[float]]:
 
 
 def validate_url(url: str) -> bool:
-    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
-    return bool(re.match(pattern, url))
+    watch_pattern = r"https?://(www\.)?youtube\.com/watch\?v=[\w-]{11}"
+    youtu_be_pattern = r"https?://youtu\.be/[\w-]{11}"
+    return bool(re.match(watch_pattern, url) or re.match(youtu_be_pattern, url))
 
 
 def parse_args() -> argparse.Namespace:
