@@ -5,7 +5,9 @@ import json
 import sys
 import os
 import logging
+import argparse
 from yt_dlp import YoutubeDL
+from pathlib import Path
 
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -194,25 +196,43 @@ def validate_url(url: str) -> bool:
     return bool(re.match(pattern, url))
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Download the “most-replayed” clips from a YouTube video."
+    )
+    p.add_argument("url", help="YouTube video URL")
+    p.add_argument(
+        "-o", "--output", type=Path, default=Path.cwd() / "Clips",
+        help="directory where clips are written"
+    )
+    p.add_argument("-v", "--verbose", action="store_true", help="more logging")
+    return p.parse_args()
+
+
 def main():
-    if len(sys.argv) <= 1 or not validate_url(sys.argv[1]):
-        logging.error("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    args = parse_args()
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    if not validate_url(args.url):
+        logging.error("Invalid URL; must look like https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
 
-    url = sys.argv[1]
-
-    logging.info("Extracting 'Most replayed' time ranges...")
-    time_ranges = get_time_ranges(url)
+    logging.info("Fetching 'Most replayed' time ranges...")
+    time_ranges = get_time_ranges(args.url)
     if not time_ranges:
         logging.error("Video has no 'Most replayed' section(s).")
         sys.exit(1)
     logging.info(f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
 
+    output_directory = args.output
+    output_directory.mkdir(exist_ok=True, parents=True)
+
     def ranges(info_dict, ydl):            
         return time_ranges
 
     paths = {
-        "home": f"{os.getcwd()}\Clips"
+        "home": str(output_directory)
     }
     ytdl_opts = {
         "download_ranges": ranges,
@@ -225,7 +245,11 @@ def main():
     }
 
     with YoutubeDL(ytdl_opts) as ytdl:
-        ytdl.download(url)
+        try:
+            ytdl.download(args.url)
+        except Exception as e:
+            logging.error("yt-dlp failed: %s", e)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
