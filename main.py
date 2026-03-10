@@ -189,26 +189,26 @@ def get_time_ranges(url: str) -> list[tuple[float]]:
     return parse_yt_initial_data(data)
 
 
+def validate_url(url: str) -> bool:
+    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
+    return bool(re.match(pattern, url))
+
+
 def main():
-    if len(sys.argv) <= 1:
+    if len(sys.argv) <= 1 or not validate_url(sys.argv[1]):
         logging.error("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
 
     url = sys.argv[1]
-    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
-    if not re.match(pattern, url):
-        logging.error("Invalid YouTube URL.")
-        sys.exit(1)
 
-    def ranges(info_dict, ydl):
-        webpage_url = info_dict["webpage_url"]
-        logging.info("Extracting 'Most replayed' time ranges...")
-        time_ranges = get_time_ranges(webpage_url)
-        time_ranges_length = len(time_ranges)
-        if time_ranges_length == 0:
-            logging.error("Video has no 'Most replayed' sections.")
-        else:
-            logging.info(f"Extracted {time_ranges_length} 'Most replayed' time range(s).")
+    logging.info("Extracting 'Most replayed' time ranges...")
+    time_ranges = get_time_ranges(url)
+    if not time_ranges:
+        logging.error("Video has no 'Most replayed' section(s).")
+        sys.exit(1)
+    logging.info(f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
+
+    def ranges(info_dict, ydl):            
         return time_ranges
 
     paths = {
@@ -220,7 +220,8 @@ def main():
         "fixup": "warn",
         "force_keyframes_at_cuts": True,
         "quiet": True,
-        "paths": paths
+        "paths": paths,
+        "retries": 3
     }
 
     with YoutubeDL(ytdl_opts) as ytdl:
