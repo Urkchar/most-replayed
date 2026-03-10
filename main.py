@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import re
 import json
 import sys
-import os
 import logging
 import argparse
 from yt_dlp import YoutubeDL
