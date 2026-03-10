@@ -1,12 +1,14 @@
 import requests
-from pprint import pprint
 from bs4 import BeautifulSoup
 import re
 import json
 import sys
 import os
-
+import logging
 from yt_dlp import YoutubeDL
+
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
 HEADERS = {
@@ -122,7 +124,7 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
 def get_time_ranges(url: str) -> list[tuple[int]] | None:
     pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
     if not re.match(pattern, url):
-        print("Invalid YouTube URL.")
+        logging.error("Invalid YouTube URL.")
         sys.exit(1)
     
     resp = requests.get(url, headers=HEADERS)
@@ -198,30 +200,27 @@ def get_time_ranges(url: str) -> list[tuple[int]] | None:
                     "end_time": end_time_seconds
                 }
                 pairs.append(pair)
-    
-    # if len(pairs) == 0:
-    #     return None
+
     return pairs
 
 
 def main():
     if len(sys.argv) <= 1:
-        print("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        logging.error("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
 
     url = sys.argv[1]
 
-    # urls = [
-    #     # url_without_most_replayed,
-    #     url_with_most_replayed,
-    #     # url_with_multiple_most_replayed,
-    #     # url_invalid
-    # ]
-
-
     def ranges(info_dict, ydl):
         webpage_url = info_dict["webpage_url"]
-        return get_time_ranges(webpage_url)
+        logging.info("Extracting 'Most replayed' time ranges...")
+        time_ranges = get_time_ranges(webpage_url)
+        time_ranges_length = len(time_ranges)
+        if time_ranges_length == 0:
+            logging.error("Video has no 'Most replayed' sections.")
+        else:
+            logging.info(f"Extracted {time_ranges_length} 'Most replayed' time range(s).")
+        return time_ranges
 
     paths = {
         "home": f"{os.getcwd()}\Clips"
@@ -235,8 +234,8 @@ def main():
         "paths": paths
     }
 
-    ytdl = YoutubeDL(ytdl_opts)
-    ytdl.download(url)
+    with YoutubeDL(ytdl_opts) as ytdl:
+        ytdl.download(url)
 
 
 if __name__ == "__main__":
