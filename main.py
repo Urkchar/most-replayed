@@ -121,95 +121,70 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
     return None
 
 
-def get_time_ranges(url: str) -> list[tuple[int]] | None:
-    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
-    if not re.match(pattern, url):
-        logging.error("Invalid YouTube URL.")
-        sys.exit(1)
-    
-    resp = requests.get(url, headers=HEADERS)
-    resp.raise_for_status()
+def get_time_ranges(url: str) -> list[tuple[float]]:
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        logging.error(f"Falied to fetch URL: {e}")
+
     html = resp.text
     soup = BeautifulSoup(html, "html.parser")
+
     data = extract_yt_initial_data(soup)
+    time_ranges = []
+    if not data:
+        logging.warning("ytInitialData not found.")
+        return time_ranges
 
-    if data is None:
-        raise RuntimeError("ytInitialData could not be found or could not be parsed.")
-    
-    if "frameworkUpdates" not in data:
-        return None
-    framework_updates = data["frameworkUpdates"]
+    try:
+        framework_updates = data["frameworkUpdates"]
+        entity_batch_updates = framework_updates["entityBatchUpdate"]
+        mutations = entity_batch_updates["mutations"]
 
-    if "entityBatchUpdate" not in framework_updates:
-        return None
-    entity_batch_updates = framework_updates["entityBatchUpdate"]
+        for mutation in mutations:
+            if mutation["type"] != "ENTITY_MUTATION_TYPE_REPLACE":
+                continue
 
-    if "mutations" not in entity_batch_updates:
-        return None
-    mutations = entity_batch_updates["mutations"]
+            payload = mutation["payload"]
+            macro_markers_list_entity = payload["macroMarkersListEntity"]
+            markers_list = macro_markers_list_entity["markersList"]
+            markers_decoration = markers_list["markersDecoration"]
+            timed_marker_decorations = markers_decoration["timedMarkerDecorations"]
 
-    pairs = []
-    for mutation in mutations:
-        if "type" not in mutation:
-            raise RuntimeError("type not found in mutation.")
-        if mutation["type"] != "ENTITY_MUTATION_TYPE_REPLACE":
-            continue
+            for decoration in timed_marker_decorations:
+                label = decoration["label"]
+                runs = label["runs"]
 
-        if "payload" not in mutation:
-            raise RuntimeError("payload not found in mutation.")
-        payload = mutation["payload"]
+                for run in runs:
+                    text = run["text"]
 
-        if "macroMarkersListEntity" not in payload:
-            continue
-        macro_markers_list_entity = payload["macroMarkersListEntity"]
+                    if text != "Most replayed":
+                        continue
 
-        if "markersList" not in macro_markers_list_entity:
-            raise RuntimeError("markersList not found in macroMarkersListEntity.")
-        markers_list = macro_markers_list_entity["markersList"]
+                    start_time_seconds = decoration["visibleTimeRangeStartMillis"] / 1000    # Divide by 1000 to convert milliseconds to seconds
+                    end_time_seconds = decoration["visibleTimeRangeEndMillis"] / 1000
+                    time_range = {
+                        "start_time": start_time_seconds,
+                        "end_time": end_time_seconds
+                    }
+                    time_ranges.append(time_range)
+    except KeyError as e:
+        logging.debug(f"Missing key in data: {e}")
 
-        if "markersDecoration" not in markers_list:
-            raise RuntimeError("markersDecoration not found in markersList.")
-        markers_decoration = markers_list["markersDecoration"]
-
-        if "timedMarkerDecorations" not in markers_decoration:
-            raise RuntimeError("timedMarkerDecorations not found in markersDecoration.")
-        timed_marker_decorations = markers_decoration["timedMarkerDecorations"]
-
-        for decoration in timed_marker_decorations:
-            if "label" not in decoration:
-                raise RuntimeError("label not found in decoration.")
-            label = decoration["label"]
-
-            if "runs" not in label:
-                raise RuntimeError("runs not found in label.")
-            runs = label["runs"]
-
-            for run in runs:
-                if "text" not in run:
-                    raise RuntimeError("text not found in run.")
-                text = run["text"]
-
-                if text != "Most replayed":
-                    raise RuntimeError("text is not 'Most replayed'.")
-                
-                # pair = (decoration["visibleTimeRangeStartMillis"], decoration["visibleTimeRangeEndMillis"])
-                start_time_seconds = decoration["visibleTimeRangeStartMillis"] / 1000
-                end_time_seconds = decoration["visibleTimeRangeEndMillis"] / 1000
-                pair = {
-                    "start_time": start_time_seconds,
-                    "end_time": end_time_seconds
-                }
-                pairs.append(pair)
-
-    return pairs
+    return time_ranges
 
 
 def main():
     if len(sys.argv) <= 1:
         logging.error("Must provide URL. Example usage:\npython main.py https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
-
+        
     url = sys.argv[1]
+    pattern = r"https://www.youtube.com/watch\?v=[a-zA-Z0-9_]{11}"
+    if not re.match(pattern, url):
+        logging.error("Invalid YouTube URL.")
+        sys.exit(1)
 
     def ranges(info_dict, ydl):
         webpage_url = info_dict["webpage_url"]
