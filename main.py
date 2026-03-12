@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 HEADERS = {
     # YouTube serves different variants depending on headers; a desktop UA helps.
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
 
@@ -26,7 +26,8 @@ def extract_js_object_from_var(script_text: str, var_name: str) -> str | None:
     Uses brace matching to handle nested objects safely.
     """
     # 1) Find "var|let|const varName =" or just "varName ="
-    m = re.search(rf"(?:var|let|const)\s+{re.escape(var_name)}\s*=\s*", script_text)
+    m = re.search(
+        rf"(?:var|let|const)\s+{re.escape(var_name)}\s*=\s*", script_text)
     if not m:
         m = re.search(rf"{re.escape(var_name)}\s*=\s*", script_text)
     if not m:
@@ -131,7 +132,7 @@ def fetch_html(url: str) -> str | None:
     except requests.RequestException as e:
         logging.error(f"Failed to fetch HTML: {e}")
         return None
-    
+
 
 def parse_yt_initial_data(data: dict) -> list[dict]:
     """Extract time ranges from ytInitialData."""
@@ -161,7 +162,8 @@ def parse_yt_initial_data(data: dict) -> list[dict]:
                     if text != "Most replayed":
                         continue
 
-                    start_time_seconds = decoration["visibleTimeRangeStartMillis"] / 1000    # Divide by 1000 to convert milliseconds to seconds
+                    # Divide by 1000 to convert milliseconds to seconds
+                    start_time_seconds = decoration["visibleTimeRangeStartMillis"] / 1000
                     end_time_seconds = decoration["visibleTimeRangeEndMillis"] / 1000
                     time_range = {
                         "start_time": start_time_seconds,
@@ -186,7 +188,7 @@ def get_time_ranges(url: str) -> list[tuple[float]]:
     if not data:
         logging.warning("ytInitialData not found.")
         return time_ranges
-    
+
     return parse_yt_initial_data(data)
 
 
@@ -215,7 +217,8 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
 
     if not validate_url(args.url):
-        logging.error("Invalid URL; must look like https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        logging.error(
+            "Invalid URL; must look like https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
 
     logging.info("Fetching 'Most replayed' time ranges...")
@@ -223,12 +226,13 @@ def main():
     if not time_ranges:
         logging.error("Video has no 'Most replayed' section(s).")
         sys.exit(1)
-    logging.info(f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
+    logging.info(
+        f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
 
     output_directory = args.output
     output_directory.mkdir(exist_ok=True, parents=True)
 
-    def ranges(info_dict, ydl):            
+    def ranges(info_dict, ydl):
         return time_ranges
 
     paths = {
