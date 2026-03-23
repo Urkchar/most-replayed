@@ -26,7 +26,7 @@ def main():
     logging.info(
         f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
 
-    output_directory = args.output
+    output_directory = args.output / soup.title.text
     output_directory.mkdir(exist_ok=True, parents=True)
 
     def ranges(info_dict, ydl):
