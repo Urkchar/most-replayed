@@ -26,13 +26,6 @@ def validate_args(args):
         )
         sys.exit(1)
 
-    if args.strategy not in {"strict", "fuzzy", "auto"}:
-        logging.error(
-            ("Clipping strategy must be strict, fuzzy, or auto.\nExample: "
-             "python main.py --strategy strict <URL>")
-        )
-        sys.exit(1)
-
     if args.strategy == "fuzzy" and args.intensity is None:
         logging.error(
             ("Must provide heartbeat intensity when using fuzzy clipping "
@@ -40,7 +33,7 @@ def validate_args(args):
              "0.5 <URL>")
         )
         sys.exit(1)
-        
+
     if args.strategy != "fuzzy" and args.intensity:
         logging.info("Intensity only used with fuzzy strategy; ignoring.")
 
@@ -69,8 +62,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="more logging")
     p.add_argument(
-        "-s", "--strategy", 
+        "-s", "--strategy",
         default="strict",
+        choices=["fuzzy", "strict", "auto"],
         help="clipping strategy.\n[fuzzy,strict,auto]")
     p.add_argument(
         "-i", "--intensity",
