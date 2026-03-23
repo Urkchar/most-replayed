@@ -22,8 +22,8 @@ def validate_args(args):
             "Invalid URL; must look like https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         sys.exit(1)
 
-    if args.strategy not in {"strict", "fuzzy"}:
-        logging.error("Clipping strategy must be fuzzy or strict.\nExample usage: python main.py -s strict <URL>")
+    if args.strategy not in {"strict", "fuzzy", "auto"}:
+        logging.error("Clipping strategy must be strict, fuzzy, or auto.\nExample usage: python main.py -s strict <URL>")
         sys.exit(1)
 
 
