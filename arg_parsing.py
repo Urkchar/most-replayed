@@ -19,11 +19,35 @@ def validate_args(args):
 
     if not validate_url(args.url):
         logging.error(
-            "Invalid URL; must look like https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            ("Invalid URL; must look like "
+             "https://www.youtube.com/watch?v=dQw4w9WgXcQ or "
+             "https://youtu.be/dQw4w9WgXcQ?si=A9Ex2iHaIc8Ep9NZ\nExample: "
+             "python main.py https://youtu.be/dQw4w9WgXcQ?si=A9Ex2iHaIc8Ep9NZ")
+        )
         sys.exit(1)
 
     if args.strategy not in {"strict", "fuzzy", "auto"}:
-        logging.error("Clipping strategy must be strict, fuzzy, or auto.\nExample usage: python main.py -s strict <URL>")
+        logging.error(
+            ("Clipping strategy must be strict, fuzzy, or auto.\nExample: "
+             "python main.py --strategy strict <URL>")
+        )
+        sys.exit(1)
+
+    if args.strategy == "fuzzy" and args.intensity is None:
+        logging.error(
+            ("Must provide heartbeat intensity when using fuzzy clipping "
+             "strategy.\nExample: python main.py --strategy fuzzy --intensity "
+             "0.5 <URL>")
+        )
+        sys.exit(1)
+        
+    if args.strategy != "fuzzy" and args.intensity:
+        logging.info("Intensity only used with fuzzy strategy; ignoring.")
+
+    if args.intensity <= 0 or args.intensity >= 1:
+        logging.error(
+            ("Intensity must be greater than 0 and less than 1.\nExample: "
+             "python main.py --strategy fuzzy --intensity 0.5 <URL>"))
         sys.exit(1)
 
 
@@ -31,15 +55,29 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Download the “most-replayed” clips from a YouTube video."
     )
-    p.add_argument("url", help="YouTube video URL")
+
     p.add_argument(
-        "-o", "--output", type=Path, default=Path.cwd() / "Clips",
-        help="directory where clips are written"
-    )
-    p.add_argument("-v", "--verbose", action="store_true", help="more logging")
-    p.add_argument("-s", "--strategy", 
-                   help="clipping strategy. fuzzy or strict.",
-                   default="strict")
+        "url",
+        help="YouTube video URL")
+    p.add_argument(
+        "-o", "--output",
+        type=Path,
+        default=Path.cwd() / "Clips",
+        help="directory where clips are written")
+    p.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="more logging")
+    p.add_argument(
+        "-s", "--strategy", 
+        default="strict",
+        help="clipping strategy.\n[fuzzy,strict,auto]")
+    p.add_argument(
+        "-i", "--intensity",
+        type=float,
+        help=("heartbeat intensity between 0 and 1. used with --strategy "
+              "fuzzy."))
+
     parsed_args = p.parse_args()
     validate_args(parsed_args)
     return parsed_args
