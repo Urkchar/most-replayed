@@ -1,3 +1,5 @@
+import logging
+
 from web_parsing import get_markers_list
 
 
@@ -41,23 +43,25 @@ def clip_auto(markers_list: list) -> list:
                 and not clipping):
                 clipping = True
                 clip = {
-                    "start_time": int(marker["startMillis"])
+                    "start_time": int(marker["startMillis"]) / 1000
                 }
                 continue
             if marker["intensityScoreNormalized"] < intensity and clipping:
                 clipping = False
-                clip["end_time"] = int(marker["startMillis"])
+                clip["end_time"] = int(marker["startMillis"]) / 1000
                 clips.append(clip)
         intensity -= 0.1
         durations = [clip["end_time"] - clip["start_time"] for clip in clips]
-        total_seconds = sum(durations) / 1000
+        total_seconds = sum(durations)
     
     return clips
 
 
 def get_time_ranges(data: dict, *, strategy: str):
     """"""
+    logging.debug("Extracting markers list...")
     markers_list = get_markers_list(data)
+    logging.debug("Markers list extracted.")
     if strategy == "strict":
         clips = clip_strict(markers_list)
     if strategy == "fuzzy":
