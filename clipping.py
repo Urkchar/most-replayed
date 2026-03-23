@@ -30,11 +30,11 @@ def clip_fuzzy(markers_list: list) -> list:
 
 def clip_auto(markers_list: list) -> list:
     """"""
-    clips = []
     markers = markers_list["markers"]
     total_seconds = 0
     intensity = 0.9
     while total_seconds < 61:
+        clips = []
         clipping = False
         for marker in markers:
             if (marker["intensityScoreNormalized"] >= intensity 
