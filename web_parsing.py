@@ -3,6 +3,7 @@ import json
 import logging
 import requests
 from bs4 import BeautifulSoup
+import sys
 
 # YouTube serves different variants depending on headers; a desktop UA helps.
 HEADERS = {
@@ -132,6 +133,7 @@ def get_markers_list(data: dict) -> list:
     entity_batch_update = framework_updates["entityBatchUpdate"]
     mutations = entity_batch_update["mutations"]
 
+    markers_list = None
     for mutation in mutations:
         if mutation["type"] != "ENTITY_MUTATION_TYPE_REPLACE":
             continue
@@ -143,5 +145,9 @@ def get_markers_list(data: dict) -> list:
             continue
         markers_list = macro_markers_list_entity["markersList"]
         break
+
+    if not markers_list:
+        logging.error("Video has no heartbeat.")
+        sys.exit(1)
 
     return markers_list
