@@ -35,12 +35,28 @@ def validate_args(args):
         sys.exit(1)
 
     if args.strategy != "fuzzy" and args.intensity:
-        logging.info("Intensity only used with fuzzy strategy; ignoring.")
+        logging.warning("Intensity only used with fuzzy strategy; ignoring.")
 
     if args.intensity <= 0 or args.intensity >= 1:
         logging.error(
             ("Intensity must be greater than 0 and less than 1.\nExample: "
              "python main.py --strategy fuzzy --intensity 0.5 <URL>"))
+        sys.exit(1)
+
+    if args.strategy == "time" and args.duration is None:
+        logging.error(
+            ("Must provide minimum total duration of clips when using time "
+             "clipping strategy.\nExample: python main.py --strategy time "
+             "--duration 60 <URL>"))
+        sys.exit(1)
+
+    if args.strategy != "time" and args.duration:
+        logging.warning("Duration only used with time strategy; ignoring.")
+
+    if args.duration <= 0:
+        logging.error(
+            ("Duration must be a positive integer.\nExample: python main.py "
+             "--strategy time --duration 60 <URL>"))
         sys.exit(1)
 
 
@@ -64,13 +80,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "-s", "--strategy",
         default="strict",
-        choices=["fuzzy", "strict", "auto"],
+        choices=["fuzzy", "strict", "time"],
         help="clipping strategy.\n[fuzzy,strict,auto]")
     p.add_argument(
         "-i", "--intensity",
         type=float,
         help=("heartbeat intensity between 0 and 1. used with --strategy "
               "fuzzy."))
+    p.add_argument(
+        "-d", "--duration",
+        type=int,
+        help=("minimum total duration of clips (in seconds). used with "
+              "--strategy time."))
 
     parsed_args = p.parse_args()
     validate_args(parsed_args)
