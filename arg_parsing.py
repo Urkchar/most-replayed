@@ -26,21 +26,21 @@ def validate_args(args):
         )
         sys.exit(1)
 
-    if args.strategy == "fuzzy" and args.intensity is None:
+    if args.strategy == "intensity" and args.intensity is None:
         logging.error(
-            ("Must provide heartbeat intensity when using fuzzy clipping "
-             "strategy.\nExample: python main.py --strategy fuzzy --intensity "
+            ("Must provide heartbeat intensity when using intensity clipping "
+             "strategy.\nExample: python main.py --strategy intensity --intensity "
              "0.5 <URL>")
         )
         sys.exit(1)
 
-    if args.strategy != "fuzzy" and args.intensity:
-        logging.warning("Intensity only used with fuzzy strategy; ignoring.")
+    if args.strategy != "intensity" and args.intensity:
+        logging.warning("--intensity only used with intensity strategy; ignoring.")
 
     if args.intensity and (args.intensity <= 0 or args.intensity >= 1):
         logging.error(
             ("Intensity must be greater than 0 and less than 1.\nExample: "
-             "python main.py --strategy fuzzy --intensity 0.5 <URL>"))
+             "python main.py --strategy intensity --intensity 0.5 <URL>"))
         sys.exit(1)
 
     if args.strategy == "time" and args.duration is None:
@@ -80,13 +80,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "-s", "--strategy",
         default="strict",
-        choices=["fuzzy", "strict", "time"],
-        help="clipping strategy.\n[fuzzy,strict,auto]")
+        choices=["intensity", "strict", "time"],
+        help="clipping strategy.\n[intensity,strict,time] (default: strict)")
     p.add_argument(
         "-i", "--intensity",
         type=float,
         help=("heartbeat intensity between 0 and 1. used with --strategy "
-              "fuzzy."))
+              "intensity."))
     p.add_argument(
         "-d", "--duration",
         type=int,
