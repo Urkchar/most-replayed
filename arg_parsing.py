@@ -37,7 +37,7 @@ def validate_args(args):
     if args.strategy != "fuzzy" and args.intensity:
         logging.warning("Intensity only used with fuzzy strategy; ignoring.")
 
-    if args.intensity <= 0 or args.intensity >= 1:
+    if args.intensity and (args.intensity <= 0 or args.intensity >= 1):
         logging.error(
             ("Intensity must be greater than 0 and less than 1.\nExample: "
              "python main.py --strategy fuzzy --intensity 0.5 <URL>"))
@@ -53,7 +53,7 @@ def validate_args(args):
     if args.strategy != "time" and args.duration:
         logging.warning("Duration only used with time strategy; ignoring.")
 
-    if args.duration <= 0:
+    if args.strategy == "time" and args.duration <= 0:
         logging.error(
             ("Duration must be a positive integer.\nExample: python main.py "
              "--strategy time --duration 60 <URL>"))
