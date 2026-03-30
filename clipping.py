@@ -5,6 +5,8 @@ from web_parsing import get_markers_list
 
 def clip_strict(markers_list: dict) -> list[dict[str: float]]:
     """Extract the start and end times of the "Most replayed" sections.
+
+    Invoked with --strategy strict.
     
     Positional arguments:
     markers_list -- the "markersList" dictionary from the initial data. 
@@ -46,16 +48,37 @@ def clip_fuzzy(markers_list: list) -> list:
     raise NotImplementedError
 
 
-def clip_auto(markers_list: list) -> list:
-    """"""
+def clip_time(markers_list: dict, duration: int) -> list[dict[str: float]]:
+    """Extract the start and end times of clips such that the total duration of
+    the clips is at least the specified duration.
+
+    Invoked with --strategy time.
+    
+    Positional arguments:
+    markers_list -- the "markersList" dictionary from the initial data.
+    duration -- the minimum total duration of the clips (in seconds).
+
+    Returns:
+    A list of dictionaries, each containing the "start_time" and "end_time" of 
+    a clip.
+    """
+    # markers is a list of dictionaries, each with startMillies (str), 
+    # durationMillis (str), and intensityScoreNormalized (float) keys.
     markers = markers_list["markers"]
+
     total_seconds = 0
-    intensity = 0.9
-    while total_seconds < 61 and intensity > 0:
-    # while intensity > 0:
+    intensity = 1
+
+    # If we haven't reached the desired total duration of clips and the 
+    # threshold can't be lowered, lower the threshold and try again.
+    while total_seconds < duration and intensity > 0:
+        intensity -= 0.01
+
         clips = []
-        clipping = False
+        clipping = False   # Flag indicating whether we're currently in a clip
         for marker in markers:
+            # If the intensity of the heatmap at the current time is above the 
+            # threshold and we're not currently in a clip, start a new clip.
             if (marker["intensityScoreNormalized"] >= intensity 
                 and not clipping):
                 clipping = True
@@ -63,11 +86,14 @@ def clip_auto(markers_list: list) -> list:
                     "start_time": int(marker["startMillis"]) / 1000
                 }
                 continue
+            # If the intensity of the heatmap at the current time is below the 
+            # threshold and we're currently in a clip, end the current clip and
+            # add it to the list of clips.
             if marker["intensityScoreNormalized"] < intensity and clipping:
                 clipping = False
                 clip["end_time"] = int(marker["startMillis"]) / 1000
                 clips.append(clip)
-        intensity -= 0.1
+        
         durations = [clip["end_time"] - clip["start_time"] for clip in clips]
         total_seconds = sum(durations)
     
@@ -90,8 +116,8 @@ def get_time_ranges(data: dict, *, strategy: str):
     if strategy == "fuzzy":
         clips = clip_fuzzy(markers_list)
     if strategy == "auto":
-        logging.debug("Clipping using auto strategy...")
-        clips = clip_auto(markers_list)
-        logging.debug("Clipped using auto strategy.")
+        logging.debug("Clipping using time-based strategy...")
+        clips = clip_time(markers_list)   # TODO add duration argument
+        logging.debug("Clipped using time-based strategy.")
 
     return clips
