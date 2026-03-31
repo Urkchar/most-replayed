@@ -17,14 +17,20 @@ def main():
     logging.debug("Fetching HTML...")
     html = fetch_html(args.url)
     logging.debug("HTML fetched.")
+
     logging.debug("Initializing soup...")
     soup = BeautifulSoup(html, "html.parser")
     logging.debug("Soup initialized.")
+
     logging.debug("Extracting initial data...")
     data = extract_yt_initial_data(soup)
     logging.debug("Initial data extracted.")
+
     logging.info("Getting time ranges...")
-    time_ranges = get_time_ranges(data, strategy=args.strategy)
+    time_ranges = get_time_ranges(data,
+                                  strategy=args.strategy,
+                                  intensity=args.intensity,
+                                  duration=args.duration)
     if not time_ranges:
         logging.error("Video has no 'Most replayed' section(s).")
         sys.exit(1)
@@ -32,8 +38,8 @@ def main():
         f"Extracted {len(time_ranges)} 'Most replayed' time range(s).")
     logging.debug(time_ranges)
 
-
-    output_directory = args.output / soup.title.text.rstrip(" - YouTube")
+    video_title = soup.title.text.rstrip(" - YouTube").replace("/", "")
+    output_directory = args.output / video_title
     output_directory.mkdir(exist_ok=True, parents=True)
 
     def ranges(info_dict, ydl):
