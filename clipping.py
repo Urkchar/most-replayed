@@ -7,7 +7,7 @@ def clip_strict(markers_list: dict) -> list[dict[str: float]]:
     """Extract the start and end times of the "Most replayed" sections.
 
     Invoked with --strategy strict.
-    
+
     Positional arguments:
     markers_list -- the "markersList" dictionary from the initial data. 
 
@@ -24,7 +24,7 @@ def clip_strict(markers_list: dict) -> list[dict[str: float]]:
     for decoration in timed_marker_decorations:
         label = decoration["label"]   # The text on the area of the heatmap
 
-        # label is a dictionary with a "runs" key. The value of "runs" is a 
+        # label is a dictionary with a "runs" key. The value of "runs" is a
         # list of dictionaries, each with a "text" key.
         if any(run["text"] == "Most replayed" for run in label["runs"]):
 
@@ -44,9 +44,9 @@ def clip_strict(markers_list: dict) -> list[dict[str: float]]:
 def clip_intensity(markers_list: list, intensity: float) -> list[dict[str: float]]:
     """Extract the start and end times of clips whose intensity is at least the
     specified intensity.
-    
+
     Invoked with --strategy intensity.
-    
+
     Positional arguments:
     markers_list -- the "markersList" dictionary from the initial data.
     intensity -- the minimum intensity for a clip to be included.
@@ -55,7 +55,7 @@ def clip_intensity(markers_list: list, intensity: float) -> list[dict[str: float
     A list of dictionaries, each containing the "start_time" and "end_time" of 
     a clip.
     """
-    # markers is a list of dictionaries, each with startMillies (str), 
+    # markers is a list of dictionaries, each with startMillies (str),
     # durationMillis (str), and intensityScoreNormalized (float) keys.
     markers = markers_list["markers"]
 
@@ -63,7 +63,7 @@ def clip_intensity(markers_list: list, intensity: float) -> list[dict[str: float
     clips = []
 
     for marker in markers:
-        # If the intensity of the heatmap at the current time is above the 
+        # If the intensity of the heatmap at the current time is above the
         # threshold and we're not currently in a clip, start a new clip.
         if marker["intensityScoreNormalized"] >= intensity and not clipping:
             clipping = True
@@ -71,7 +71,7 @@ def clip_intensity(markers_list: list, intensity: float) -> list[dict[str: float
                 "start_time": int(marker["startMillis"]) / 1000
             }
             continue
-        # If the intensity of the heatmap at the current time is below the 
+        # If the intensity of the heatmap at the current time is below the
         # threshold and we're currently in a clip, end the current clip and
         # add it to the list of clips.
         if marker["intensityScoreNormalized"] < intensity and clipping:
@@ -87,7 +87,7 @@ def clip_time(markers_list: dict, duration: int) -> list[dict[str: float]]:
     the clips is at least the specified duration.
 
     Invoked with --strategy time.
-    
+
     Positional arguments:
     markers_list -- the "markersList" dictionary from the initial data.
     duration -- the minimum total duration of the clips (in seconds).
@@ -96,14 +96,14 @@ def clip_time(markers_list: dict, duration: int) -> list[dict[str: float]]:
     A list of dictionaries, each containing the "start_time" and "end_time" of 
     a clip.
     """
-    # markers is a list of dictionaries, each with startMillies (str), 
+    # markers is a list of dictionaries, each with startMillies (str),
     # durationMillis (str), and intensityScoreNormalized (float) keys.
     markers = markers_list["markers"]
 
     total_seconds = 0
     intensity = 1
 
-    # If we haven't reached the desired total duration of clips and the 
+    # If we haven't reached the desired total duration of clips and the
     # threshold can't be lowered, lower the threshold and try again.
     while total_seconds < duration and intensity > 0:
         intensity -= 0.01
@@ -111,26 +111,26 @@ def clip_time(markers_list: dict, duration: int) -> list[dict[str: float]]:
         clips = []
         clipping = False   # Flag indicating whether we're currently in a clip
         for marker in markers:
-            # If the intensity of the heatmap at the current time is above the 
+            # If the intensity of the heatmap at the current time is above the
             # threshold and we're not currently in a clip, start a new clip.
-            if (marker["intensityScoreNormalized"] >= intensity 
-                and not clipping):
+            if (marker["intensityScoreNormalized"] >= intensity
+                    and not clipping):
                 clipping = True
                 clip = {
                     "start_time": int(marker["startMillis"]) / 1000
                 }
                 continue
-            # If the intensity of the heatmap at the current time is below the 
+            # If the intensity of the heatmap at the current time is below the
             # threshold and we're currently in a clip, end the current clip and
             # add it to the list of clips.
             if marker["intensityScoreNormalized"] < intensity and clipping:
                 clipping = False
                 clip["end_time"] = int(marker["startMillis"]) / 1000
                 clips.append(clip)
-        
+
         durations = [clip["end_time"] - clip["start_time"] for clip in clips]
         total_seconds = sum(durations)
-    
+
     return clips
 
 
