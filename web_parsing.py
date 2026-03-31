@@ -5,7 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 
-# YouTube serves different variants depending on headers; a desktop UA helps.
+# YouTube serves different variants depending on headers; a desktop UA 
+# helps.
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -86,8 +87,8 @@ def normalize_js_like_json(text: str) -> str:
 
 
 def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
-    """Finds the inline <script> that defines ytInitialData and returns it as
-    a Python dict.
+    """Finds the inline <script> that defines ytInitialData and returns 
+    it as a Python dict.
     """
     # YouTube embeds ytInitialData in an inline script; scan for it.
     for s in soup.find_all("script"):
@@ -99,7 +100,8 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
         if not obj_text:
             continue
 
-        # Try JSON parse directly first (YouTube usually uses valid JSON here)
+        # Try JSON parse directly first (YouTube usually uses valid JSON
+        # here)
         try:
             return json.loads(obj_text)
         except Exception:
@@ -110,7 +112,8 @@ def extract_yt_initial_data(soup: BeautifulSoup) -> dict | None:
             fixed = normalize_js_like_json(obj_text)
             return json.loads(fixed)
         except Exception:
-            # As a last resort, give back the raw text so you can inspect it
+            # As a last resort, give back the raw text so you can 
+            # inspect it
             return None
 
     return None
