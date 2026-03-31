@@ -29,13 +29,14 @@ def validate_args(args):
     if args.strategy == "intensity" and args.intensity is None:
         logging.error(
             ("Must provide heartbeat intensity when using intensity clipping "
-             "strategy.\nExample: python main.py --strategy intensity --intensity "
-             "0.5 <URL>")
+             "strategy.\nExample: python main.py --strategy intensity "
+             "--intensity 0.5 <URL>")
         )
         sys.exit(1)
 
     if args.strategy != "intensity" and args.intensity:
-        logging.warning("--intensity only used with intensity strategy; ignoring.")
+        logging.warning(
+            "--intensity only used with intensity strategy; ignoring.")
 
     if args.intensity and (args.intensity <= 0 or args.intensity >= 1):
         logging.error(
