@@ -5,7 +5,7 @@ import logging
 import sys
 
 
-def validate_url(url: str) -> bool:
+def is_valid_url(url: str) -> bool:
     watch_pattern = r"https?://(www\.)?youtube\.com/watch\?v=[\w-]{11}"
     youtu_be_pattern = r"https?://youtu\.be/[\w-]{11}"
     return bool(
@@ -17,7 +17,7 @@ def validate_args(args):
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    if not validate_url(args.url):
+    if not is_valid_url(args.url):
         logging.error(
             ("Invalid URL; must look like "
              "https://www.youtube.com/watch?v=dQw4w9WgXcQ or "
